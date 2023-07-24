@@ -6,17 +6,21 @@
 Generate a few pion particle gun events for testing
 
 #+begin_src bash
-python /opt/SteeringMacros/Gen/lcio/pion_gun_pT.py
+python /opt/SteeringMacros/Gen/lcio_pion_gun_pT.py
 #+end_src
 
 ** Simulate events
 - Simulate only 100 of the 10k available events
 - ~sim_steer_GEN_CONDOR.py~ needs a minor edit to define an outputfile name to
   avoid an undefined variable error
+#+begin_src bash
+cp /opt/SteeringMacros/Sim/sim_steer_BIB_CONDOR.py .
+sed -i '/OUTFILENAME/s/^/# /' sim_steer_BIB_CONDOR.py
+#+end_src
 
 #+begin_src bash
 ddsim --inputFile gen_pionGun.slcio \
-    --steeringFile /opt/SteeringMacros/Sim/sim_steer_GEN_CONDOR.py \
+    --steeringFile sim_steer_BIB_CONDOR.py \
     --outputFile pionGun_SIM.slcio \
     --compactFile /opt/detector-simulation/geometries/MuColl_10TeV_v0A/MuColl_10TeV_v0A.xml \
     -N 100
