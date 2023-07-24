@@ -45,17 +45,18 @@ Marlin /opt/SteeringMacros/Reco/reco_CONDOR.xml \
 - [ ] This segfaults in ACTS tracking
 
 ** Using Gaudi / k4geo
-- Directly using the adopted steering file with the ~TrkHitConverter~
-#+begin_src bash
-git clone https://github.com/tmadlener/TrkHitConverter
-#+end_src
-then follow the instructions there to build, install and setup the processor
-
+- We can use the Key4hep based steering file for this with some minor adaptions
 - Export environment variables
 #+begin_src bash
 export GEOMETRY=/opt/detector-simulation
 #+end_src
-- Make ~InitDD4hep~ use that by updating the path from which the geometry is loaded
+- Make ~InitDD4hep~ use that by updating the path from which the geometry is
+  loaded. For this it is easiest to simply copy the original steering file and apply the changes there
+#+begin_src bash
+cp /opt/SteeringMacros/k4Reco/steer_reco.py .
+sed -i '/DD4hepXMLFile/s|../detector-simulation|$GEOMETRY|' steer_reco.py
+#+end_src
+  In the end the ~InitDD4hep~ configuration should look like this:
 #+begin_src python
 InitDD4hep.Parameters = {
                          "DD4hepXMLFile": ["$GEOMETRY/geometries/MuColl_10TeV_v0A/MuColl_10TeV_v0A.xml"],
@@ -64,11 +65,11 @@ InitDD4hep.Parameters = {
 #+end_src
 - Adapt outpufile name (optionally)
 #+begin_src bash
-sed -i '/LCIOOutputFile/s/\["\(.*\)"\]/["pionGun_REC.slcio"]/'
+sed -i '/LCIOOutputFile/s/\["\(.*\)"\]/["pionGun_REC.slcio"]/' steer_reco.py
 #+end_src
 - Run the script
 #+begin_src bash
-k4run TrkHitConverter/scripts/steer_reco.py --LcioEvent.Files=pionGun_SIM.slcio -n 100
+k4run steer_reco.py --LcioEvent.Files=pionGun_SIM.slcio -n 100
 #+end_src
 
 * Conversion
@@ -103,9 +104,10 @@ export CMAKE_PREFIX_PATH=$(realpath ../install)
 
 ** Build a new standalone converter
 We also have to rebuild the standalone converter to pick up the newly built LCIO
-from above, we can use the master branch for this
+from above. Additionally, we want a version of the converter that converts
+~TrackerHitPlane~ as ~TrackerHit~. For this we can use a dedicated branch
 #+begin_src bash
-git clone https://github.com/key4hep/k4EDM4hep2LcioConv
+git clone -b mucoll-conv-production https://github.com/tmadlener/k4EDM4hep2LcioConv
 #+end_src
 
 And then follow the usual steps for building
@@ -126,16 +128,16 @@ export LD_LIBRARY_PATH=$(realpath ../install/lib):$LD_LIBRARY_PATH
 - First we need to create a /patch file/ that allows us to have consistent event
 contents (see the [[https://github.com/key4hep/k4EDM4hep2LcioConv/blob/master/doc/LCIO2EDM4hep.md][README]] for more details)
 #+begin_src bash
-check_missing_cols --minimal pionGun_REC_w_plainhits.slcio > edm4hep_contents.txt
+check_missing_cols --minimal pionGun_REC.slcio > edm4hep_contents.txt
 #+end_src
-- We have to remove the ~SiTracks~ from this list as there is still an issue in
+- We have to remove the ~SiTracks~ from this list as there is still an [[https://github.com/AIDASoft/podio/issues/462][issue in podio]] in
   podio that prevents us from reading this back properly as a subset collection
 #+begin_src bash
 sed -i '/SiTracks /d' edm4hep_contents.txt
 #+end_src
 - Now we can run the converter
 #+begin_src bash
-lcio2edm4hep pionGun_REC_w_plainhits pionGun_edm4hep.root edm4hep_contents.txt
+lcio2edm4hep pionGun_REC.slcio pionGun_edm4hep.root edm4hep_contents.txt
 #+end_src
 - Finally we can have a peek at the file using ~podio-dump~
 #+begin_src bash
