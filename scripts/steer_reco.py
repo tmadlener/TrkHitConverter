@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-
+from Configurables import ApplicationMgr
 from Gaudi.Configuration import *
 
 from Configurables import LcioEvent, EventDataSvc, MarlinProcessorWrapper
@@ -46,9 +45,13 @@ Output_REC.ProcessorType = "LCIOOutputProcessor"
 Output_REC.Parameters = {
     "DropCollectionNames": [],
     "DropCollectionTypes": ["SimCalorimeterHit", "SimTrackerHit"],
-    "FullSubsetCollections": ["EfficientMCParticles", "InefficientMCParticles"],
+    "FullSubsetCollections": [
+        "EfficientMCParticles",
+        "InefficientMCParticles",
+        "SiTracks",
+    ],
     "KeepCollectionNames": ["MCParticle_SiTracks_Refitted"],
-    "LCIOOutputFile": ["pionGun_REC_w_plainhits.slcio"],
+    "LCIOOutputFile": ["pionGun_REC.slcio"],
     "LCIOWriteMode": ["WRITE_NEW"],
 }
 
@@ -439,7 +442,7 @@ MyHcalEndcapReco.Parameters = {
 }
 
 MyEcalBarrelSelector = MarlinProcessorWrapper("MyEcalBarrelSelector")
-MyEcalBarrelSelector.OutputLevel = INFO
+MyEcalBarrelSelector.OutputLevel = DEBUG
 MyEcalBarrelSelector.ProcessorType = "CaloHitSelector"
 MyEcalBarrelSelector.Parameters = {
     "CaloHitCollectionName": ["EcalBarrelCollectionRec"],
@@ -745,34 +748,12 @@ OverlayBIB.Parameters = {
     "TPCDriftvelocity": ["0.05"],
 }
 
-TrkHitConverter = MarlinProcessorWrapper("TrkHitConverter")
-TrkHitConverter.OutputLevel = INFO
-TrkHitConverter.ProcessorType = "TrkHitConverterProcessor"
-TrkHitConverter.Parameters = {
-    "InputHitCollections": [
-        "VETrackerHits",
-        "OETrackerHit",
-        "VBTrackerHits",
-        "IETrackerHits",
-        "OBTrackerHits",
-        "IBTrackerHits",
-    ],
-    "InputTrackCollections": [
-        "SiTracks_Refitted",
-        "SiTracks",
-        "AllTracks",
-        "SeedTracks",
-    ],
-    "OutputNameSuffix": ["_plainHits"],
-}
-
-
 algList.append(MyAIDAProcessor)
 algList.append(EventNumber)
 algList.append(Config)
 algList.append(InitDD4hep)
-# algList.append(OverlayBIB)  # Config.OverlayBIB
-algList.append(OverlayFalse)  # Config.OverlayFalse
+algList.append(OverlayBIB)  # Config.OverlayBIB
+# algList.append(OverlayFalse)  # Config.OverlayFalse
 algList.append(VXDBarrelDigitiser)
 algList.append(VXDEndcapDigitiser)
 algList.append(InnerPlanarDigiProcessor)
@@ -791,16 +772,13 @@ algList.append(MyHcalBarrelDigi)
 algList.append(MyHcalBarrelReco)
 algList.append(MyHcalEndcapDigi)
 algList.append(MyHcalEndcapReco)
-# algList.append(MyEcalBarrelSelector)
-# algList.append(MyEcalEndcapSelector)
-# algList.append(MyHcalBarrelSelector)
-# algList.append(MyHcalEndcapSelector)
-# algList.append(DDMarlinPandora)
-# algList.append(FastJetProcessor)
-algList.append(TrkHitConverter)
+algList.append(MyEcalBarrelSelector)
+algList.append(MyEcalEndcapSelector)
+algList.append(MyHcalBarrelSelector)
+algList.append(MyHcalEndcapSelector)
+algList.append(DDMarlinPandora)
+algList.append(FastJetProcessor)
 algList.append(Output_REC)
-
-from Configurables import ApplicationMgr
 
 ApplicationMgr(
     TopAlg=algList, EvtSel="NONE", EvtMax=10, ExtSvc=[evtsvc], OutputLevel=INFO
