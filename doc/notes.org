@@ -49,6 +49,15 @@ Marlin /opt/SteeringMacros/Reco/reco_CONDOR.xml \
 - [ ] This segfaults in ACTS tracking
 
 ** Using Gaudi / k4geo
+*** preparation / data downloading
+- Download BIB from ~snowmass/collab~ and store it in ~/data/BIB10TeV~
+#+begin_src bash
+mkdir -p /data/BIB10TeV
+cd /data/BIB10TeV
+rsync -az snowmass21:/collab/project/snowmass21/data/muonc/fmeloni/DataMuC_MuColl10_v0A/BIB10TeV/BIB_sim_m?.slcio .
+#+end_src
+
+*** Running
 - We can use the Key4hep based steering file for this with some minor adaptions
 - Export environment variables
 #+begin_src bash
@@ -67,9 +76,36 @@ InitDD4hep.Parameters = {
                          "EncodingStringParameterName": ["GlobalTrackerReadoutID"]
                          }
 #+end_src
+- Copy ~MarlinPandora~ steering files and slightly touch them up
+#+begin_src bash
+cp -r /opt/SteeringMacros/Reco/PandoraSettings .
+sed -i 's|/code/SteeringMacros/Reco/||' PandoraSettings/PandoraSettingsDefault.xml
+#+end_src
 - Adapt outpufile name (optionally)
 #+begin_src bash
 sed -i '/LCIOOutputFile/s/\["\(.*\)"\]/["pionGun_REC.slcio"]/' steer_reco.py
+#+end_src
+- To avoid running into [[https://github.com/AIDASoft/podio/issues/462][issue in podio]] we also need to make sure that the
+  ~SiTracks~ are not stored as a subset collection, by adding it to the
+  ~FullSubsetCollections~ of the ~Output_REC~ processor.
+#+begin_src bash
+sed -i '/FullSubsetCollections/s/\]/, "SiTracks"\]/' steer_reco.py
+#+end_src
+now the configuration of the ~Output_REC~ processor should look like
+#+begin_src python
+Output_REC.Parameters = {
+    "DropCollectionNames": [],
+    "DropCollectionTypes": ["SimCalorimeterHit", "SimTrackerHit"],
+    "FullSubsetCollections": ["EfficientMCParticles", "InefficientMCParticles", "SiTracks"],
+    "KeepCollectionNames": ["MCParticle_SiTracks_Refitted"],
+    "LCIOOutputFile": ["pionGun_REC.slcio"],
+    "LCIOWriteMode": ["WRITE_NEW"]
+}
+#+end_src
+- Enable ~OverlayBIB~ (and disable ~OverlayFalse~)
+#+begin_src bash
+sed -i '/# algList.append(OverlayBIB)/s/^# //' steer_reco.py
+sed -i '/algList.append(OverlayFalse)/s/^/# /' steer_reco.py
 #+end_src
 - Run the script
 #+begin_src bash
@@ -103,7 +139,7 @@ are still in the ~build~ folder)
 #+begin_src  bash
 export PATH=$(realpath ../install/bin):$PATH
 export LD_LIBRARY_PATH=$(realpath ../install/lib):$LD_LIBRARY_PATH
-export CMAKE_PREFIX_PATH=$(realpath ../install)
+export CMAKE_PREFIX_PATH=$(realpath ../install):$CMAKE_PREFIX_PATH
 #+end_src
 
 ** Build a new standalone converter
@@ -134,11 +170,6 @@ contents (see the [[https://github.com/key4hep/k4EDM4hep2LcioConv/blob/master/do
 #+begin_src bash
 check_missing_cols --minimal pionGun_REC.slcio > edm4hep_contents.txt
 #+end_src
-- We have to remove the ~SiTracks~ from this list as there is still an [[https://github.com/AIDASoft/podio/issues/462][issue in podio]] in
-  podio that prevents us from reading this back properly as a subset collection
-#+begin_src bash
-sed -i '/SiTracks /d' edm4hep_contents.txt
-#+end_src
 - Now we can run the converter
 #+begin_src bash
 lcio2edm4hep pionGun_REC.slcio pionGun_edm4hep.root edm4hep_contents.txt
@@ -146,4 +177,12 @@ lcio2edm4hep pionGun_REC.slcio pionGun_edm4hep.root edm4hep_contents.txt
 - Finally we can have a peek at the file using ~podio-dump~
 #+begin_src bash
 podio-dump pionGun_edm4hep.root
+#+end_src
+*** Removing the ~SiTracks~ subset collection from conversion
+- If you didn't make sure ot write the ~SiTrack~ collection as a full
+  collection, you will have to remove it from being converted, to not run into
+  this [[https://github.com/AIDASoft/podio/issues/462][issue in podio]]. This can easily be done by simply removing it from the
+  config file for the conversion.
+#+begin_src bash
+sed -i '/SiTracks /d' edm4hep_contents.txt
 #+end_src
